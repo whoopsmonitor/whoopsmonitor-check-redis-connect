@@ -1,0 +1,37 @@
+stages:
+  - build
+  - release
+
+.build: &build
+  stage: build
+  script:
+    - docker login -u "gitlab-ci-token" -p "$CI_BUILD_TOKEN" $CI_REGISTRY
+    - docker pull "$CI_REGISTRY_IMAGE/$check_name:$CI_BUILD_REF_NAME" || true # allow failure
+    - docker build --pull -t "$CI_REGISTRY_IMAGE/$check_name:$CI_BUILD_REF_NAME" .
+    - docker push "$CI_REGISTRY_IMAGE/$check_name:$CI_BUILD_REF_NAME"
+  only:
+    - master
+  tags:
+    - dind
+
+build:package:
+  <<: *build
+  variables:
+    check_name: whoopsmonitor-check-redis-connect
+
+.release: &release
+  stage: release
+  script:
+    - docker login -u "gitlab-ci-token" -p "$CI_BUILD_TOKEN" $CI_REGISTRY
+    - docker pull "$CI_REGISTRY_IMAGE/$check_name:$CI_BUILD_REF_NAME"
+    - docker tag "$CI_REGISTRY_IMAGE/$check_name:$CI_BUILD_REF_NAME" "$CI_REGISTRY_IMAGE/$check_name:latest"
+    - docker push "$CI_REGISTRY_IMAGE/$check_name:latest"
+  only:
+    - master
+  tags:
+    - dind
+
+release:package:
+  <<: *release
+  variables:
+    check_name: whoopsmonitor-check-redis-connect
